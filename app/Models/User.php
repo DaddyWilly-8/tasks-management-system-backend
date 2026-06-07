@@ -41,4 +41,13 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    public function exists($email)
+    {
+        if (empty($email)) {
+            return false;
+        }
+
+        return self::where('email', $email)->exists();
+    }
 }

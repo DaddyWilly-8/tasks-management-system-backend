@@ -1,15 +1,17 @@
 # user authentication
 
-## user login
+-   user login
+-   user registration
+-   logout
 
-## user registration
+# managing tasks
 
-## logout
+-   user A creates a task
+-   assign user B to the task
+-   user B gets notified
 
-# managing tasks (FULL CRUD)
+# calendar events
 
-# assigning user to tasks
-
-# display calendar events
-
-# notify the user
+-   user creates and event
+-   the event is stored in the DB
+-   the user gets notified on teh event data
