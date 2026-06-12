@@ -30,11 +30,13 @@ Route::post('/login', function (Request $req) {
             'email' => 'These credentials do not match our records.',
         ]);
     }
-
-    $req->session()->regenerate();
+    $user = User::where('email', $credentials['email'])->first();
+    Log::info('user: ' . $user);
+    Auth::login($user);
+    // $req->session()->regenerate();
 
     return response()->json([
-        'message' => 'success',
+        'message' => 'Success loging in',
         'user' => Auth::user()
     ], 200);
 });
@@ -62,20 +64,20 @@ Route::post('/register', function (Request $req) {
                 'email' => $payload['email'],
                 'password' => bcrypt($payload['password']) // Hash the password
             ]);
-
-            $req->session()->regenerate();
+            Auth::login($user);
+            // $req->session()->regenerate();
         });
 
         return response()->json([
-            'message' => 'User created successfull'
+            'message' => 'User created successfull',
+            'success' => false,
+            'user' => Auth::user(),
         ], 200);
     } catch (\Throwable $th) {
         Log::error('Registration failed: ' . $th->getMessage());
 
         return response()->json([
             'message' => 'Registration failed',
-            'success' => false,
-            'user' => Auth::user(),
         ], 500);
     }
 });
