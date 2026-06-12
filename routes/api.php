@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Log;
-use Exception;
+use Illuminate\Validation\ValidationException;
 
 /*
 |--------------------------------------------------------------------------
@@ -26,10 +26,9 @@ Route::post('/login', function (Request $req) {
     ]);
 
     if (!Auth::attempt($credentials)) {
-        return response()->json([
-            'message' => 'Invalid Credentials',
-            'success' => false
-        ], 401);
+        throw ValidationException::withMessages([
+            'email' => 'These credentials do not match our records.',
+        ]);
     }
 
     $req->session()->regenerate();
@@ -49,7 +48,7 @@ Route::post('/register', function (Request $req) {
         'password_confirmation' => 'required'
     ]);
 
-    if (User::exists($payload['email'])) {
+    if (User::where('email', $payload['email'])->exists()) {
         return response()->json([
             'message' => 'user already exists',
             'sucess' => false
@@ -57,14 +56,15 @@ Route::post('/register', function (Request $req) {
     }
 
     try {
-        DB::transaction(function () use ($payload) {
-            User::create([
+        DB::transaction(function () use ($payload, $req) {
+            $user = User::create([
                 'name' => $payload['name'],
                 'email' => $payload['email'],
                 'password' => bcrypt($payload['password']) // Hash the password
             ]);
+
+            $req->session()->regenerate();
         });
-        $req->session()->regenerate();
 
         return response()->json([
             'message' => 'User created successfull'
@@ -74,7 +74,8 @@ Route::post('/register', function (Request $req) {
 
         return response()->json([
             'message' => 'Registration failed',
-            'success' => false
+            'success' => false,
+            'user' => Auth::user(),
         ], 500);
     }
 });
