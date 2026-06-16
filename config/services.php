@@ -30,4 +30,9 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'fcm' => [
+        'server_key' => env('FCM_SERVER_KEY'),
+        'send_url' => env('FCM_SEND_URL', 'https://fcm.googleapis.com/fcm/send'),
+    ],
+
 ];

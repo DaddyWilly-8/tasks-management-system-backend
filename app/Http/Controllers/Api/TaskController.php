@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tasks\TaskUpsertRequest;
+use App\Models\Notification;
 use App\Models\Task;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -94,6 +95,8 @@ class TaskController extends Controller
             'assigned_to' => $validated['assigned_to'],
         ])->load(['creator:id,name,email', 'assignee:id,name,email']);
 
+        $this->createTaskAssignmentNotification($task, $user->id, 'task_assigned');
+
         return response()->json([
             'message' => 'Task created successfully',
         ], 201);
@@ -124,9 +127,14 @@ class TaskController extends Controller
         }
 
         $validated = $request->validated();
+        $previousAssigneeId = (int) $task->assigned_to;
 
         $task->update($validated);
         $task->load(['creator:id,name,email', 'assignee:id,name,email']);
+
+        if ((int) $task->assigned_to !== $previousAssigneeId) {
+            $this->createTaskAssignmentNotification($task, $user->id, 'task_reassigned');
+        }
 
         return response()->json([
             'message' => 'Task updated successfully',
@@ -161,6 +169,35 @@ class TaskController extends Controller
 
         return response()->json([
             'message' => 'Task deleted successfully',
+        ]);
+    }
+
+    private function createTaskAssignmentNotification(Task $task, int $actorId, string $type): void
+    {
+        if ((int) $task->assigned_to === $actorId) {
+            return;
+        }
+
+        $actorName = $task->creator?->name ?? 'A user';
+
+        Notification::create([
+            'user_id' => $task->assigned_to,
+            'title' => $type === 'task_reassigned' ? 'Task reassigned to you' : 'New task assigned to you',
+            'message' => $type === 'task_reassigned'
+                ? $actorName . ' reassigned task "' . $task->title . '" to you.'
+                : $actorName . ' assigned task "' . $task->title . '" to you.',
+            'type' => $type,
+            'channel' => 'echo',
+            'is_read' => false,
+            'is_sent' => false,
+            'scheduled_date' => now()->toDateString(),
+            'scheduled_time' => now()->format('H:i:s'),
+            'action_url' => '/tasks/' . $task->id,
+            'data' => [
+                'task_id' => (string) $task->id,
+                'title' => $task->title,
+                'assigned_by' => $actorName,
+            ],
         ]);
     }
 }

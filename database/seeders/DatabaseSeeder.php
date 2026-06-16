@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\Notification;
 use App\Models\User;
 use App\Models\Task;
 
@@ -27,6 +27,15 @@ class DatabaseSeeder extends Seeder
                     return [
                         'created_by' => $creator->id,
                         'assigned_to' => $users->random()->id,
+                    ];
+                })
+                ->create();
+
+            Notification::factory()
+                ->count(2)
+                ->state(function () use ($creator) {
+                    return [
+                        'user_id' => $creator->id,
                     ];
                 })
                 ->create();

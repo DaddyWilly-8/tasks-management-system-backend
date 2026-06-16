@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\FcmTokenController;
 use App\Http\Controllers\Auth\AuthController;
 use Illuminate\Support\Facades\Route;
 
@@ -30,4 +32,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/tasks/{id}', [TaskController::class, 'destroy']);
 
     Route::get('/users', [UserController::class, 'index']);
+
+    Route::get('/users/{userId}/notifications', [NotificationController::class, 'index']);
+    Route::put('/users/{userId}/notifications/{id}/read', [NotificationController::class, 'markRead']);
+    Route::put('/users/{userId}/notifications/read-all', [NotificationController::class, 'markAllRead']);
+
+    Route::post('/users/{userId}/fcm-tokens', [FcmTokenController::class, 'store']);
+    Route::delete('/users/{userId}/fcm-tokens/{token}', [FcmTokenController::class, 'destroy'])
+        ->where('token', '.*');
 });
