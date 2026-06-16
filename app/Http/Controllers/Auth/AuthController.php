@@ -6,10 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -20,23 +18,27 @@ class AuthController extends Controller
             'password' => ['required'],
         ]);
 
-        if (!Auth::attempt($credentials)) {
-            throw ValidationException::withMessages([
-                'email' => ['These credentials do not match our records.'],
-            ]);
-        }
-
         $user = User::findByEmail($credentials['email']);
 
         if (!$user) {
-            throw ValidationException::withMessages([
-                'email' => ['Unable to load authenticated user.'],
-            ]);
+            return response()->json([
+                'message' => 'User not found for the provided email.',
+                'success' => false,
+            ], 404);
         }
+
+        if (!Hash::check($credentials['password'], $user->password)) {
+            return response()->json([
+                'message' => 'Invalid password.',
+                'success' => false,
+            ], 401);
+        }
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'message' => 'Login successful',
+            'success' => true,
             'user' => $user,
             'token' => $token,
         ]);
