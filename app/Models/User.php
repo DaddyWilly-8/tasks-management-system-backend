@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -42,12 +41,13 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
     ];
 
-    public function exists($email)
+    public static function findByEmail(string $email): ?self
     {
-        if (empty($email)) {
-            return false;
-        }
+        return self::where('email', $email)->first();
+    }
 
+    public static function emailExists(string $email): bool
+    {
         return self::where('email', $email)->exists();
     }
 }
