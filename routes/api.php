@@ -31,7 +31,6 @@ Route::post('/login', function (Request $req) {
         ]);
     }
     $user = User::where('email', $credentials['email'])->first();
-    Log::info('user: ' . $user);
     Auth::login($user);
     // $req->session()->regenerate();
 
