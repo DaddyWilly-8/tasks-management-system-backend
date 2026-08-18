@@ -3,80 +3,70 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\FcmToken as FcmTokenModel;
+use App\Models\FcmToken;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class FcmTokenController extends Controller
 {
-    public function store(Request $request, int $userId): JsonResponse
+    public function store(Request $request, User $user): JsonResponse
     {
-        $authorizationError = $this->authorizeUserScope($request, $userId);
-        if ($authorizationError) {
-            return $authorizationError;
-        }
+        $this->authorizeUser($request, $user);
 
         $validated = $request->validate([
-            'token' => ['required', 'string', 'max:2048'],
+            'fcm_token' => ['nullable', 'string'],
+            'token' => ['nullable', 'string'],
+            'platform' => ['nullable', 'string', 'max:50'],
         ]);
 
-        $fcmToken = FcmTokenModel::query()->updateOrCreate(
+        $token = $validated['fcm_token'] ?? $validated['token'] ?? null;
+
+        if (!$token) {
+            return response()->json([
+                'message' => 'FCM token is required.',
+                'success' => false,
+            ], 422);
+        }
+
+        FcmToken::query()->updateOrCreate(
             [
-                'user_id' => $userId,
-                'token' => $validated['token'],
+                'user_id' => $user->id,
+                'token' => $token,
             ],
             [
+                'platform' => $validated['platform'] ?? 'web',
                 'is_active' => true,
+                'last_used_at' => now(),
             ]
         );
 
         return response()->json([
-            'message' => 'FCM token registered successfully',
-            'success' => true,
-            'fcm_token_id' => $fcmToken->id,
-        ], 201);
-    }
-
-    public function destroy(Request $request, int $userId, string $token): JsonResponse
-    {
-        $authorizationError = $this->authorizeUserScope($request, $userId);
-        if ($authorizationError) {
-            return $authorizationError;
-        }
-
-        $fcmToken = FcmTokenModel::query()
-            ->where('user_id', $userId)
-            ->where('token', $token)
-            ->first();
-
-        if (!$fcmToken) {
-            return response()->json([
-                'message' => 'FCM token not found',
-                'success' => false,
-            ], 404);
-        }
-
-        $fcmToken->update([
-            'is_active' => false,
-        ]);
-
-        return response()->json([
-            'message' => 'FCM token deactivated successfully',
+            'message' => 'Device token registered successfully',
             'success' => true,
         ]);
     }
 
-    private function authorizeUserScope(Request $request, int $userId): ?JsonResponse
+    public function destroy(Request $request, User $user, string $token): JsonResponse
     {
-        $authUser = $request->user();
+        $this->authorizeUser($request, $user);
 
-        if ((int) $authUser->id === (int) $userId) {
-            return null;
-        }
+        FcmToken::query()
+            ->where('user_id', $user->id)
+            ->where('token', urldecode($token))
+            ->update([
+                'is_active' => false,
+                'updated_at' => now(),
+            ]);
 
         return response()->json([
-            'message' => 'You are not allowed to manage these FCM tokens.',
-            'success' => false,
-        ], 403);
+            'message' => 'Device token removed successfully',
+            'success' => true,
+        ]);
+    }
+
+    private function authorizeUser(Request $request, User $user): void
+    {
+        abort_unless((int) $request->user()->id === (int) $user->id, 403);
     }
 }

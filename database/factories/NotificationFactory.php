@@ -25,7 +25,7 @@ class NotificationFactory extends Factory
                 'task_reassigned',
                 'task_due_soon',
             ]),
-            'channel' => 'echo',
+            'channel' => 'both',
             'is_read' => $this->faker->boolean(35),
             'is_sent' => $this->faker->boolean(70),
             'scheduled_date' => now()->toDateString(),

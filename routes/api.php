@@ -1,22 +1,12 @@
 <?php
 
+use App\Http\Controllers\Api\DeviceTokenController;
+use App\Http\Controllers\Api\FcmTokenController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\NotificationController;
-use App\Http\Controllers\Api\FcmTokenController;
 use App\Http\Controllers\Auth\AuthController;
 use Illuminate\Support\Facades\Route;
-
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| is assigned the "api" middleware group. Enjoy building your API!
-|
-*/
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
@@ -37,7 +27,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/users/{userId}/notifications/{id}/read', [NotificationController::class, 'markRead']);
     Route::put('/users/{userId}/notifications/read-all', [NotificationController::class, 'markAllRead']);
 
-    Route::post('/users/{userId}/fcm-tokens', [FcmTokenController::class, 'store']);
-    Route::delete('/users/{userId}/fcm-tokens/{token}', [FcmTokenController::class, 'destroy'])
+    Route::post('/users/{user}/fcm-tokens', [FcmTokenController::class, 'store']);
+    Route::delete('/users/{user}/fcm-tokens/{token}', [FcmTokenController::class, 'destroy'])
         ->where('token', '.*');
+    
+    // NEW: Device token registration
+    Route::post('/notifications/register-device', [NotificationController::class, 'registerDeviceToken']);
+    
+    // NEW: Send push notification (admin only)
+    Route::post('/notifications/send-push', [NotificationController::class, 'sendPushNotification']);
+
+    // Device Token routes for push notifications
+    Route::post('/device-tokens', [DeviceTokenController::class, 'register']);
+    Route::delete('/device-tokens', [DeviceTokenController::class, 'unregister']);
+    Route::get('/device-tokens', [DeviceTokenController::class, 'index']);
+    Route::post('/device-tokens/subscribe', [DeviceTokenController::class, 'subscribeToTopic']);
+    Route::post('/device-tokens/unsubscribe', [DeviceTokenController::class, 'unsubscribeFromTopic']);
 });

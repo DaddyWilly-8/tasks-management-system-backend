@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\FcmToken as FcmTokenModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -58,8 +57,13 @@ class User extends Authenticatable
         return $this->hasMany(Notification::class);
     }
 
+    public function deviceTokens()
+    {
+        return $this->hasMany(DeviceToken::class);
+    }
+
     public function fcmTokens(): HasMany
     {
-        return $this->hasMany(FcmTokenModel::class);
+        return $this->hasMany(FcmToken::class);
     }
 }

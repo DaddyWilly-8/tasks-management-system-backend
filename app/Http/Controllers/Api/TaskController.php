@@ -6,11 +6,20 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Tasks\TaskUpsertRequest;
 use App\Models\Notification;
 use App\Models\Task;
+use App\Services\FirebaseNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class TaskController extends Controller
 {
+    protected FirebaseNotificationService $firebaseNotification;
+
+    public function __construct(FirebaseNotificationService $firebaseNotification)
+    {
+        $this->firebaseNotification = $firebaseNotification;
+    }
+
     public function index(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -180,14 +189,15 @@ class TaskController extends Controller
 
         $actorName = $task->creator?->name ?? 'A user';
 
-        Notification::create([
+        // Create notification in database
+        $notification = Notification::create([
             'user_id' => $task->assigned_to,
             'title' => $type === 'task_reassigned' ? 'Task reassigned to you' : 'New task assigned to you',
             'message' => $type === 'task_reassigned'
                 ? $actorName . ' reassigned task "' . $task->title . '" to you.'
                 : $actorName . ' assigned task "' . $task->title . '" to you.',
             'type' => $type,
-            'channel' => 'echo',
+            'channel' => 'both',
             'is_read' => false,
             'is_sent' => false,
             'scheduled_date' => now()->toDateString(),
@@ -199,5 +209,51 @@ class TaskController extends Controller
                 'assigned_by' => $actorName,
             ],
         ]);
+
+        // Send push notification via Firebase
+        $this->sendPushNotification($task->assigned_to, $notification);
+    }
+
+    /**
+     * Send push notification to user
+     */
+    private function sendPushNotification(int $userId, Notification $notification): void
+    {
+        try {
+            $user = \App\Models\User::find($userId);
+            if (!$user) {
+                return;
+            }
+
+            $result = $this->firebaseNotification->sendToUser(
+                $user,
+                $notification->title,
+                $notification->message,
+                [
+                    'notification_id' => (string) $notification->id,
+                    'task_id' => (string) ($notification->data['task_id'] ?? ''),
+                    'type' => $notification->type,
+                    'action_url' => $notification->action_url ?? '/notifications',
+                ]
+            );
+
+            // Mark notification as sent if successful
+            if ($result['success']) {
+                $notification->update(['is_sent' => true]);
+            }
+
+            Log::info('Push notification sent', [
+                'user_id' => $userId,
+                'notification_id' => $notification->id,
+                'result' => $result
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to send push notification', [
+                'user_id' => $userId,
+                'notification_id' => $notification->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }
