@@ -145,8 +145,52 @@ class TaskController extends Controller
             $this->createTaskAssignmentNotification($task, $user->id, 'task_reassigned');
         }
 
+        if ($task->wasChanged('status') && $task->status === 'completed') {
+            $this->createTaskCompletionNotification($task);
+        }
+
         return response()->json([
             'message' => 'Task updated successfully',
+        ]);
+    }
+
+    /**
+     * Update only the status of a task.
+     */
+    public function updateStatus(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'status' => ['required', 'in:pending,in_progress,completed'],
+        ]);
+
+        $user = $request->user();
+
+        $task = Task::query()
+            ->where('id', $id)
+            ->where(function ($query) use ($user) {
+                $query->where('created_by', $user->id)
+                    ->orWhere('assigned_to', $user->id);
+            })
+            ->first();
+
+        if (!$task) {
+            return response()->json([
+                'message' => 'Task not found',
+            ], 404);
+        }
+
+        $previousStatus = $task->status;
+        $task->update(['status' => $request->status]);
+        $task->load(['creator:id,name,email', 'assignee:id,name,email']);
+
+        // Send notification when a task is marked as completed
+        if ($task->status === 'completed' && $previousStatus !== 'completed') {
+            $this->createTaskCompletionNotification($task);
+        }
+
+        return response()->json([
+            'message' => 'Task status updated successfully',
+            'task' => $task,
         ]);
     }
 
@@ -212,6 +256,34 @@ class TaskController extends Controller
 
         // Send push notification via Firebase
         $this->sendPushNotification($task->assigned_to, $notification);
+    }
+
+    /**
+     * Create notification when a task is marked as completed
+     */
+    private function createTaskCompletionNotification(Task $task): void
+    {
+        $assigneeName = $task->assignee?->name ?? 'A user';
+
+        $notification = Notification::create([
+            'user_id' => $task->created_by,
+            'title' => 'Task completed',
+            'message' => $assigneeName . ' completed task "' . $task->title . '".',
+            'type' => 'task_completed',
+            'channel' => 'both',
+            'is_read' => false,
+            'is_sent' => false,
+            'scheduled_date' => now()->toDateString(),
+            'scheduled_time' => now()->format('H:i:s'),
+            'action_url' => '/tasks/' . $task->id,
+            'data' => [
+                'task_id' => (string) $task->id,
+                'title' => $task->title,
+                'completed_by' => $assigneeName,
+            ],
+        ]);
+
+        $this->sendPushNotification($task->created_by, $notification);
     }
 
     /**

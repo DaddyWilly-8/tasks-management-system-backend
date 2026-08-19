@@ -99,7 +99,7 @@ class FirebaseNotificationService
             ]);
             
             return [
-                'success' => true,
+                'success' => $successCount > 0,
                 'result' => [
                     'success_count' => $successCount,
                     'failure_count' => $failureCount,
@@ -125,13 +125,17 @@ class FirebaseNotificationService
             ->toArray();
 
         if (empty($tokens)) {
+            Log::warning('Push notification skipped: user has no active FCM tokens', [
+                'user_id' => $user->id,
+            ]);
+
             return [
-                'success' => true,
+                'success' => false,
+                'error' => 'User has no active FCM tokens',
                 'result' => [
                     'success_count' => 0,
                     'failure_count' => 0,
                     'invalid_tokens' => [],
-                    'message' => 'User has no active FCM tokens',
                 ],
             ];
         }

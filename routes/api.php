@@ -19,6 +19,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tasks/{id}', [TaskController::class, 'show']);
     Route::post('/tasks', [TaskController::class, 'store']);
     Route::put('/tasks/{id}', [TaskController::class, 'update']);
+    Route::patch('/tasks/{id}/status', [TaskController::class, 'updateStatus']);
     Route::delete('/tasks/{id}', [TaskController::class, 'destroy']);
 
     Route::get('/users', [UserController::class, 'index']);
@@ -44,3 +45,4 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/device-tokens/subscribe', [DeviceTokenController::class, 'subscribeToTopic']);
     Route::post('/device-tokens/unsubscribe', [DeviceTokenController::class, 'unsubscribeFromTopic']);
 });
+
